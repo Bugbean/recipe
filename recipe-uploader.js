@@ -1,6 +1,7 @@
 <script>
   document.addEventListener("DOMContentLoaded", () => {
     console.log("Uploader script loaded");
+    console.log("Script is loaded and executing");
 
     const SUPABASE_URL = 'https://nnkxnejefgoymqszgvrq.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ua3huZWplZmdveW1xc3pndnJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0NjE2NDgsImV4cCI6MjA2MTAzNzY0OH0.OBpHCRz9iAnBS1tlnEBzEo2nbiwt-LB7X3VKysCfNcY';
