@@ -28,10 +28,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const { error } = await supabase.from('recipes').insert([data]);
 
     if (error) {
-      console.error(`Error uploading ${file.name}:`, error);
-      status.textContent = `Error uploading ${file.name}: ${error.message}`;
+      if (error.status === 409 || error.message.includes('duplicate')) {
+        console.warn(`${file.name} already exists — skipped.`);
+        status.textContent = `${file.name} already exists — skipped.`;
+      } else {
+        console.error(`Error uploading ${file.name}:`, error);
+        status.textContent = `Error uploading ${file.name}: ${error.message}`;
+      }
     } else {
       status.textContent = `${file.name} uploaded successfully!`;
+  }
     }
   }
 });
