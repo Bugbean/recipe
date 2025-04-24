@@ -15,13 +15,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   fileInput.addEventListener("change", async (event) => {
-    const file = event.target.files[0];
-    if (!file || !file.name.endsWith('.docx')) {
-      status.textContent = 'Please select a .docx file.';
-      return;
-    }
+  const files = event.target.files;
+  for (const file of files) {
+    if (!file.name.endsWith('.docx')) continue;
 
-    status.textContent = 'Processing .docx...';
+    status.textContent = `Processing ${file.name}...`;
     const arrayBuffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer });
     const text = result.value;
@@ -30,11 +28,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const { error } = await supabase.from('recipes').insert([data]);
 
     if (error) {
-      status.textContent = 'Upload failed: ' + error.message;
+      console.error(`Error uploading ${file.name}:`, error);
+      status.textContent = `Error uploading ${file.name}: ${error.message}`;
     } else {
-      status.textContent = 'Recipe uploaded successfully!';
+      status.textContent = `${file.name} uploaded successfully!`;
     }
-  });
+  }
+});
 
   function extractRecipe(text) {
     const titleMatch = text.match(/^([A-Z \-]+)$/m);
