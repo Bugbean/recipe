@@ -7,7 +7,6 @@
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     const fileInput = document.getElementById("file-input");
-    const status = document.getElementById("status");
 
     if (!fileInput) {
       console.error("fileInput not found");
@@ -16,10 +15,15 @@
 
     fileInput.addEventListener("change", async (event) => {
       const files = event.target.files;
-      for (const file of files) {
-        if (!file.name.endsWith('.docx')) continue;
+      clearLog();
 
-        status.textContent = `Processing ${file.name}...`;
+      for (const file of files) {
+        if (!file.name.endsWith('.docx')) {
+          logStatus(`${file.name} skipped — not a .docx`);
+          continue;
+        }
+
+        logStatus(`Processing ${file.name}...`);
         const arrayBuffer = await file.arrayBuffer();
         const result = await mammoth.extractRawText({ arrayBuffer });
         const text = result.value;
@@ -29,14 +33,12 @@
 
         if (error) {
           if (error.status === 409 || error.message.includes('duplicate')) {
-            console.warn(`${file.name} already exists — skipped.`);
-            status.textContent = `${file.name} already exists — skipped.`;
+            logStatus(`${file.name} already exists — skipped.`);
           } else {
-            console.error(`Error uploading ${file.name}:`, error);
-            status.textContent = `Error uploading ${file.name}: ${error.message}`;
+            logStatus(`Error uploading ${file.name}: ${error.message}`);
           }
         } else {
-          status.textContent = `${file.name} uploaded successfully!`;
+          logStatus(`${file.name} uploaded successfully!`);
         }
       }
     });
@@ -65,6 +67,18 @@
         last_cooked: null,
         link: ''
       };
+    }
+
+    function logStatus(message) {
+      const ul = document.getElementById("status-log");
+      const li = document.createElement("li");
+      li.textContent = message;
+      ul.appendChild(li);
+    }
+
+    function clearLog() {
+      const ul = document.getElementById("status-log");
+      ul.innerHTML = '';
     }
   });
 </script>
