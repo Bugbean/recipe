@@ -1,0 +1,181 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Recipe Uploader</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.4.2/mammoth.browser.min.js"></script>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #0a2540;
+      margin: 0;
+      padding: 2rem;
+      color: #f1f5f9;
+    }
+    .container {
+      max-width: 600px;
+      background: #173b61;
+      margin: auto;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      padding: 2rem;
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 1rem;
+      font-size: 1.8rem;
+    }
+    button {
+      background: #a5d8ff;
+      border: none;
+      color: #0a2540;
+      padding: 0.75rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #cce7ff;
+    }
+    #file-input {
+      display: none;
+    }
+    ul {
+      list-style: none;
+      padding-left: 0;
+      text-align: left;
+      margin-top: 1.5rem;
+    }
+    ul li {
+      padding: 0.25rem 0;
+    }
+    #error-log {
+      color: #ffb3b3;
+    }
+    .success {
+      color: #9ef0c2;
+    }
+    .skipped {
+      color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Upload Recipes (.docx)</h1>
+    <p>Select and upload one or more recipe files.</p>
+    <input type="file" id="file-input" accept=".docx" multiple>
+    <button onclick="document.getElementById('file-input').click()">Choose Files</button>
+    <ul id="status-log"></ul>
+    <ul id="error-log"></ul>
+  </div>
+
+  <script>
+    console.log("Uploader HTML loaded.");
+
+    document.addEventListener("DOMContentLoaded", () => {
+      console.log("Uploader script executing...");
+
+      const SUPABASE_URL = 'https://nnkxnejefgoymqszgvrq.supabase.co';
+      const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5ua3huZWplZmdveW1xc3pndnJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDU0NjE2NDgsImV4cCI6MjA2MTAzNzY0OH0.OBpHCRz9iAnBS1tlnEBzEo2nbiwt-LB7X3VKysCfNcY';
+      const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+      const fileInput = document.getElementById("file-input");
+
+      fileInput.addEventListener("change", async (event) => {
+        const files = event.target.files;
+        clearLog();
+
+        for (const file of files) {
+          try {
+            if (!file.name.endsWith('.docx')) {
+              logStatus(`${file.name} skipped — not a .docx`, 'skipped');
+              continue;
+            }
+
+            logStatus(`Processing ${file.name}...`);
+            const arrayBuffer = await file.arrayBuffer();
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            const text = result.value;
+
+            const data = extractRecipe(text);
+            if (!data.name) {
+              logStatus(`${file.name} skipped — no title found.`, 'skipped');
+              continue;
+            }
+
+            console.log("Uploading to Supabase:", data);
+            const { error } = await supabase.from('recipes').insert([data]);
+
+            if (error) {
+              if (error.status === 409 || error.message.includes('duplicate')) {
+                logStatus(`${file.name} already exists — skipped.`, 'skipped');
+              } else {
+                logStatus(`Error uploading ${file.name}`, 'error');
+                logError(`❌ ${file.name}: ${error.message}`);
+              }
+            } else {
+              logStatus(`${file.name} uploaded successfully!`, 'success');
+            }
+
+          } catch (err) {
+            logStatus(`❌ Unexpected error with ${file.name}`, 'error');
+            logError(`❌ ${file.name}: ${err.message}`);
+          }
+        }
+      });
+
+      function extractRecipe(text) {
+        const titleMatch = text.match(/^([A-Z \-]+)$/m);
+        const title = titleMatch ? titleMatch[1].trim() : null;
+
+        const cookTimeMatch = text.match(/COOK TIME:\s*(.+)/i);
+        const cookTime = cookTimeMatch ? cookTimeMatch[1].trim() : '';
+
+        const tagsMatch = text.match(/#.+/);
+        const tags = tagsMatch ? tagsMatch[0].trim() : '';
+
+        const ingredientsSection = text.split(/INGREDIENTS/i)[1]?.split(/METHOD|M E T H O D/i)[0] || '';
+        const ingredients = ingredientsSection.trim();
+
+        return {
+          name: title,
+          cook_time: cookTime,
+          tags: tags,
+          ingredients: ingredients,
+          prep_method: 'Fresh',
+          rotation_status: 'New',
+          meal_type: 'Dinner',
+          last_cooked: null,
+          link: ''
+        };
+      }
+
+      function logStatus(message, type = '') {
+        const ul = document.getElementById("status-log");
+        const li = document.createElement("li");
+        li.textContent = message;
+        if (type) li.className = type;
+        ul.appendChild(li);
+        console.log(message);
+      }
+
+      function logError(message) {
+        const ul = document.getElementById("error-log");
+        const li = document.createElement("li");
+        li.textContent = message;
+        ul.appendChild(li);
+        console.error(message);
+      }
+
+      function clearLog() {
+        document.getElementById("status-log").innerHTML = '';
+        document.getElementById("error-log").innerHTML = '';
+        console.clear();
+      }
+    });
+  </script>
+</body>
+</html>
