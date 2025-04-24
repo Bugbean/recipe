@@ -29,6 +29,7 @@
         const text = result.value;
 
         const data = extractRecipe(text);
+        console.log("Uploading:", data);
         const { error } = await supabase.from('recipes').insert([data]);
 
         if (error) {
